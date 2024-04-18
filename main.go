@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/draganm/gorefresh/build"
@@ -39,7 +41,8 @@ func main() {
 				return fmt.Errorf("module directory is not a directory")
 			}
 
-			ctx := context.Background()
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer stop()
 
 			eg, ctx := errgroup.WithContext(ctx)
 
@@ -188,6 +191,7 @@ func main() {
 				for {
 					binary, err := readLast(ctx, binaryChan)
 					if err != nil {
+						procCancel()
 						return fmt.Errorf("failed to get next binary: %w", err)
 					}
 

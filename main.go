@@ -14,6 +14,7 @@ import (
 	"github.com/draganm/gorefresh/depdirs"
 	"github.com/draganm/gosha/gosha"
 	"github.com/fsnotify/fsnotify"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"
 )
@@ -59,16 +60,41 @@ func main() {
 
 				shaChan <- lastSha
 
+				watchedDirs := []string{}
+
+				w, err := fsnotify.NewBufferedWatcher(50)
+				if err != nil {
+					return fmt.Errorf("failed to create watcher: %w", err)
+				}
+
+				defer w.Close()
+
 				for ctx.Err() == nil {
 					depDirs, err := depdirs.DependencyDirs(moduleDir)
 					if err != nil {
 						return fmt.Errorf("failed to get dependency directories: %w", err)
 					}
 
-					w, err := fsnotify.NewBufferedWatcher(50)
-					if err != nil {
-						return fmt.Errorf("failed to create watcher: %w", err)
+					toAdd := lo.Without(depDirs, watchedDirs...)
+					toRemove := lo.Without(watchedDirs, depDirs...)
+
+					for _, d := range toRemove {
+						err = w.Remove(d)
+						if err != nil {
+							return fmt.Errorf("failed to remove %s from watcher: %w", d, err)
+						}
 					}
+
+					for _, d := range toAdd {
+						err = w.Add(d)
+						if err != nil {
+							return fmt.Errorf("failed to add %s to watcher: %w", d, err)
+						}
+					}
+
+					watchedDirs = depDirs
+
+					fmt.Println("updated watched dirs:", "watching", len(watchedDirs), "added", len(toAdd), "removed", len(toRemove))
 
 					for _, dd := range depDirs {
 						err = w.Add(dd)
@@ -90,11 +116,6 @@ func main() {
 
 						if bytes.Equal(sha, lastSha) {
 							continue
-						}
-
-						err = w.Close()
-						if err != nil {
-							return fmt.Errorf("failed to close watcher: %w", err)
 						}
 
 						lastSha = sha

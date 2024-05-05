@@ -62,14 +62,14 @@ func main() {
 
 				watchedDirs := []string{}
 
-				w, err := fsnotify.NewBufferedWatcher(50)
+				w, err := fsnotify.NewWatcher()
 				if err != nil {
 					return fmt.Errorf("failed to create watcher: %w", err)
 				}
 
 				defer w.Close()
 
-				for ctx.Err() == nil {
+				updateWatches := func() error {
 					depDirs, err := depdirs.DependencyDirs(moduleDir)
 					if err != nil {
 						return fmt.Errorf("failed to get dependency directories: %w", err)
@@ -79,6 +79,16 @@ func main() {
 					toRemove := lo.Without(watchedDirs, depDirs...)
 
 					for _, d := range toRemove {
+
+						_, err = os.Stat(d)
+
+						switch {
+						case os.IsNotExist(err):
+							continue
+						case err != nil:
+							return fmt.Errorf("failed to stat %s: %w", d, err)
+						}
+
 						err = w.Remove(d)
 						if err != nil {
 							return fmt.Errorf("failed to remove %s from watcher: %w", d, err)
@@ -96,34 +106,38 @@ func main() {
 
 					fmt.Println("updated watched dirs:", "watching", len(watchedDirs), "added", len(toAdd), "removed", len(toRemove))
 
-					for _, dd := range depDirs {
-						err = w.Add(dd)
-						if err != nil {
-							return fmt.Errorf("failed to add %s to watcher: %w", dd, err)
-						}
+					return nil
+
+				}
+
+				err = updateWatches()
+				if err != nil {
+					return err
+				}
+
+				for ctx.Err() == nil {
+
+					_, err = readLast(ctx, w.Events)
+					if err != nil {
+						return err
 					}
 
-					for {
-						_, err = readLast(ctx, w.Events)
-						if err != nil {
-							return err
-						}
-
-						sha, err := gosha.CalculatePackageSHA(moduleDir, false, false)
-						if err != nil {
-							return fmt.Errorf("failed to calculate package sha: %w", err)
-						}
-
-						if bytes.Equal(sha, lastSha) {
-							continue
-						}
-
-						lastSha = sha
-						shaChan <- sha
-
-						break
-
+					sha, err := gosha.CalculatePackageSHA(moduleDir, false, false)
+					if err != nil {
+						return fmt.Errorf("failed to calculate package sha: %w", err)
 					}
+
+					err = updateWatches()
+					if err != nil {
+						return err
+					}
+
+					if bytes.Equal(sha, lastSha) {
+						continue
+					}
+
+					lastSha = sha
+					shaChan <- sha
 
 				}
 				return ctx.Err()

@@ -5,8 +5,6 @@ go 1.21.5
 require (
 	github.com/draganm/gosha v0.0.1
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/go-logr/logr v1.4.1
-	github.com/looplab/fsm v1.0.1
 	github.com/samber/lo v1.38.1
 	github.com/urfave/cli/v2 v2.27.1
 	golang.org/x/sync v0.4.0

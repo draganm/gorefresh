@@ -3,9 +3,11 @@ package depdirs
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/samber/lo"
 	"golang.org/x/tools/go/packages"
@@ -55,13 +57,24 @@ func DependencyDirs(
 
 		packageFiles := []string{}
 		packageFiles = append(packageFiles, pkg.GoFiles...)
-		packageFiles = append(packageFiles, pkg.EmbedFiles...)
+
 		packageFiles = append(packageFiles, pkg.OtherFiles...)
 		packageFiles = append(packageFiles, pkg.IgnoredFiles...)
 
 		dirs := lo.Map(packageFiles, func(n string, _ int) string {
-			return filepath.Dir(n)
+			d := filepath.Dir(n)
+			if !strings.HasSuffix(d, string(filepath.Separator)) {
+				d = d + string(filepath.Separator)
+			}
+			return d
 		})
+
+		recurseEmbeddedDirs, err := recurseEmbeddedDirs(pkg.EmbedFiles)
+		if err != nil {
+			return nil, fmt.Errorf("could not recurse embedded dirs: %w", err)
+		}
+
+		dirs = append(dirs, recurseEmbeddedDirs...)
 
 		packageDirs = append(packageDirs, lo.Uniq(dirs)...)
 
@@ -85,4 +98,47 @@ func visitDeps(pkg *packages.Package, visit map[string]*packages.Package) {
 		visitDeps(dep, visit)
 	}
 
+}
+
+func recurseEmbeddedDirs(embeddedFiles []string) ([]string, error) {
+	allDirs := []string{}
+	for _, embeddedFile := range embeddedFiles {
+		embeddedDir := filepath.Dir(embeddedFile)
+		allDirs = append(allDirs, embeddedDir)
+	}
+
+	allDirs = lo.Uniq(allDirs)
+
+	res := []string{}
+
+	for _, embeddedDir := range allDirs {
+		embeddedSubDirs, err := recurseEmbeddedDir(embeddedDir)
+		if err != nil {
+			return nil, fmt.Errorf("could not recurse embedded dir: %w", err)
+		}
+		res = append(res, embeddedSubDirs...)
+	}
+
+	res = lo.Map(res, func(n string, _ int) string {
+		if !strings.HasSuffix(n, string(filepath.Separator)) {
+			n = n + string(filepath.Separator)
+		}
+		return n
+	})
+
+	return lo.Uniq(res), nil
+}
+
+func recurseEmbeddedDir(embeddedDir string) ([]string, error) {
+	allDirs := []string{}
+	filepath.WalkDir(embeddedDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("could not walk dir: %w", err)
+		}
+		if d.IsDir() {
+			allDirs = append(allDirs, path)
+		}
+		return nil
+	})
+	return allDirs, nil
 }

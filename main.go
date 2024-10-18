@@ -174,11 +174,12 @@ func main() {
 				procArgs := c.Args().Slice()[1:]
 
 				startProcess := func(binary builtBinary) func() {
-					// clear the screen
-					fmt.Printf("\x1bc")
+					fmt.Println()
+					fmt.Println("---- starting ----")
+					fmt.Println()
 
 					if binary.err != nil {
-						fmt.Println(binary.err)
+						fmt.Println("could not build binary", binary.err)
 						return func() {}
 					}
 

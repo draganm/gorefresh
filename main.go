@@ -55,7 +55,7 @@ func main() {
 
 				lastSha, err := gosha.CalculatePackageSHA(moduleDir, false, false)
 				if err != nil {
-					return fmt.Errorf("failed to calculate package sha: %w", err)
+					lastSha = []byte{}
 				}
 
 				shaChan <- lastSha

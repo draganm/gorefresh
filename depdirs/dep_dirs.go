@@ -38,9 +38,9 @@ func DependencyDirs(
 		}
 	})
 
-	if err != nil {
-		return nil, fmt.Errorf("while loading packages:\n%w", err)
-	}
+	// if err != nil {
+	// 	return nil, fmt.Errorf("while loading packages:\n%w", err)
+	// }
 
 	allPackages := map[string]*packages.Package{}
 

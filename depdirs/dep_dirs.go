@@ -34,12 +34,14 @@ func DependencyDirs(
 	err = nil
 	packages.Visit(pkgs, nil, func(p *packages.Package) {
 		for _, e := range p.Errors {
-			err = errors.Join(err, e)
+			if err != nil {
+				err = errors.Join(err, e)
+			}
 		}
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("while loading packages:\n%w", err)
+		return nil, fmt.Errorf("while loading packages: %w", err)
 	}
 
 	allPackages := map[string]*packages.Package{}

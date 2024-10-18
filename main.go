@@ -112,7 +112,7 @@ func main() {
 
 				err = updateWatches()
 				if err != nil {
-					return err
+					fmt.Println("failed to update watches:", err)
 				}
 
 				for ctx.Err() == nil {
@@ -129,7 +129,8 @@ func main() {
 
 					err = updateWatches()
 					if err != nil {
-						return err
+						fmt.Println("failed to update watches:", err)
+						continue
 					}
 
 					if bytes.Equal(sha, lastSha) {

@@ -29,6 +29,12 @@ Install the CLI tool using `go get`:
 go install github.com/draganm/gorefresh
 ```
 
+Or with Nix:
+
+```bash
+nix run github:draganm/gorefresh
+```
+
 ## Future work
 
 - Support for build arguments

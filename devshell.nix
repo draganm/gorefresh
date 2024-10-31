@@ -1,7 +1,7 @@
 { pkgs }:
 pkgs.mkShell {
   # Add build dependencies
-  packages = [ pkgs.go_1_23 ];
+  packages = [ pkgs.go ];
 
   # Add environment variables
   env = { };

@@ -1,6 +1,6 @@
 module github.com/draganm/gorefresh
 
-go 1.23.0
+go 1.22.6
 
 require (
 	github.com/draganm/gosha v0.0.1

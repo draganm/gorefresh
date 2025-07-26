@@ -124,7 +124,8 @@ func main() {
 
 					sha, err := gosha.CalculatePackageSHA(moduleDir, false, false)
 					if err != nil {
-						return fmt.Errorf("failed to calculate package sha: %w", err)
+						fmt.Printf("failed to calculate package sha: %v\n", err)
+						continue
 					}
 
 					err = updateWatches()
